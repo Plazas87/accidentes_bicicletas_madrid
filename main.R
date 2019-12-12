@@ -5,7 +5,6 @@ library(lubridate)
 library(curl)
 library(ggplot2)
 library(ggmap)
-library(pander)
 
 
 # Obtener el dataset desde la página de datos abiertos de Madrid
@@ -78,9 +77,14 @@ library(scales)
 
 g <- ggplot(accidentes_bici, aes(LESIVIDAD, fill= LESIVIDAD)) + 
   geom_bar() + 
-  labs(x = "Gravedad del accidente", y = 'Número de accidentes', caption = total_accidentes) + 
+  labs(title = "Pendiente seleccionar título", 
+       subtitle = "(1973-74)",
+       tag = "Figure 1",
+       x = "Gravedad del accidente", 
+       y = 'Número de accidentes', 
+       caption = total_accidentes) + 
   scale_y_continuous(breaks = c(50,100,150,200,250,300)) + 
-  scale_fill_brewer(palette = 'Paired') +
+  scale_fill_brewer(palette = 'RdGy') +
   theme_minimal()
 g 
 
@@ -127,49 +131,64 @@ add_months_names <- function(x){
   x
 }
 
-
+# ---------------------------------------------------------------------------
 accidentes_bici$MES_NAMES <- sapply(accidentes_bici$MES, add_months_names)
 as.factor(accidentes_bici$MES_NAMES)
-t <- accidentes_bici %>% 
+
+temporal_table <- accidentes_bici %>% 
   group_by(MES, MES_NAMES) %>% 
   summarise(Total = n())
 
-x_scale <- accidentes_bici$MES_NAMES
-
-p <- ggplot(accidentes_bici, aes(MES, fill= MES)) + 
+p <- ggplot(accidentes_bici, aes(MES, fill= MES_NAMES)) + 
   geom_bar() + 
-  labs(x = "Año 2019 - Meses", y = 'Número de accidentes') + 
-  scale_y_continuous(breaks = c(10, 30, 50, 70, 90, 110)) +
-  scale_fill_brewer(palette="Paired") +
-  theme_minimal() + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-p 
-
-
-o <- ggplot(accidentes_bici, aes(MES)) + 
-  geom_bar() + 
-  labs(title = "Fuel economy declines as weight increases", 
+  labs(title = "Pendiente seleccionar título", 
        subtitle = "(1973-74)",
-       caption = "Número de accidentes en cada mes del año",
-       tag = "Figure 1",
+       caption = "Hecho con ggplot2 package",
+       tag = "Figure 2",
        colour = "Gears",
        x = "Año 2019 - Meses", 
        y = 'Número de accidentes') + 
   scale_y_continuous(breaks = c(10, 30, 50, 70, 90, 110)) +
-  scale_x_discrete(limit = t$MES, labels = t$MES_NAMES) +
+  scale_x_discrete(limit = temporal_table$MES, labels = temporal_table$MES_NAMES) +
   scale_fill_brewer(palette="RdGy") +
   theme_minimal() + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-o 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = 'none')
+p 
+# --------------------------------------------------------------------------------------
+# Se arregla el vector de los nombres para poder modificar el nombre de los labals de las facetas 
+t <- temporal_table$MES_NAMES
+names(t)<- temporal_table$MES
 
+# Se plotea la gráfica con todos los elementos para lograr
+w <- ggplot(accidentes_bici, aes(LESIVIDAD, fill= LESIVIDAD)) + 
+  geom_bar() + 
+  labs(title = "Pendiente seleccionar título", 
+       subtitle = "(1973-74)",
+       tag = "Figure 3",
+       x = "Gravedad del accidente", 
+       y = 'Número de accidentes', 
+       caption = total_accidentes) + 
+  scale_fill_brewer(palette = 'RdGy') +
+  theme_bw() +
+  theme(legend.position = 'none', 
+        strip.background = element_rect(fill="black"), 
+        strip.text.x = element_text(size = 10, color = "white")) + 
+  facet_wrap(~MES,nrow = 2 , labeller = labeller(MES = t))
 
-labs(title = "Fuel economy declines as weight increases",
-     subtitle = "(1973-74)",
-     caption = "Data from the 1974 Motor Trend US magazine.",
-     tag = "Figure 1",
-     x = "Weight (1000 lbs)",
-     y = "Fuel economy (mpg)",
-     colour = "Gears")
+w 
+# --------------------------------------------------------------------------------
+
+z <- accidentes_bici %>% 
+  group_by(MES,MES_NAMES,LESIVIDAD) %>% 
+  summarise(Total = n())
+
+# labs(title = "Fuel economy declines as weight increases",
+#      subtitle = "(1973-74)",
+#      caption = "Data from the 1974 Motor Trend US magazine.",
+#      tag = "Figure 1",
+#      x = "Weight (1000 lbs)",
+#      y = "Fuel economy (mpg)",
+#      colour = "Gears")
 
 
 
