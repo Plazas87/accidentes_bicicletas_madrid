@@ -74,9 +74,12 @@ total_accidentes <- paste(c('Total de accidentes registrados:', as.character(tot
 
 # ---------------------- Numero de accidentes por su gravedad
 # Grafico de número 
+library(scales)
+
 g <- ggplot(accidentes_bici, aes(LESIVIDAD, fill= LESIVIDAD)) + 
   geom_bar() + 
-  labs(x = "Gravedad del accidente", y = 'Número de accidentes', caption = total_accidentes ) + 
+  labs(x = "Gravedad del accidente", y = 'Número de accidentes', caption = total_accidentes) + 
+  scale_y_continuous(breaks = c(50,100,150,200,250,300)) + 
   scale_fill_brewer(palette = 'Paired') +
   theme_minimal()
 g 
@@ -121,17 +124,52 @@ add_months_names <- function(x){
   if (x == 12) {
     x <- "Diciembre"
   }
+  x
 }
 
 
 accidentes_bici$MES_NAMES <- sapply(accidentes_bici$MES, add_months_names)
+as.factor(accidentes_bici$MES_NAMES)
+t <- accidentes_bici %>% 
+  group_by(MES, MES_NAMES) %>% 
+  summarise(Total = n())
+
+x_scale <- accidentes_bici$MES_NAMES
 
 p <- ggplot(accidentes_bici, aes(MES, fill= MES)) + 
   geom_bar() + 
   labs(x = "Año 2019 - Meses", y = 'Número de accidentes') + 
+  scale_y_continuous(breaks = c(10, 30, 50, 70, 90, 110)) +
   scale_fill_brewer(palette="Paired") +
-  theme_minimal()
-p
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p 
+
+
+o <- ggplot(accidentes_bici, aes(MES)) + 
+  geom_bar() + 
+  labs(title = "Fuel economy declines as weight increases", 
+       subtitle = "(1973-74)",
+       caption = "Número de accidentes en cada mes del año",
+       tag = "Figure 1",
+       colour = "Gears",
+       x = "Año 2019 - Meses", 
+       y = 'Número de accidentes') + 
+  scale_y_continuous(breaks = c(10, 30, 50, 70, 90, 110)) +
+  scale_x_discrete(limit = t$MES, labels = t$MES_NAMES) +
+  scale_fill_brewer(palette="RdGy") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+o 
+
+
+labs(title = "Fuel economy declines as weight increases",
+     subtitle = "(1973-74)",
+     caption = "Data from the 1974 Motor Trend US magazine.",
+     tag = "Figure 1",
+     x = "Weight (1000 lbs)",
+     y = "Fuel economy (mpg)",
+     colour = "Gears")
 
 
 
