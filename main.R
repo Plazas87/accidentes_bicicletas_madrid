@@ -2,44 +2,9 @@ library(dplyr)
 library(leaflet)
 library(reshape2)
 library(lubridate)
-library(curl)
 library(ggplot2)
 library(ggmap)
 
-
-# Obtener el dataset desde la página de datos abiertos de Madrid
-accidentes_bici <- read.csv(curl("https://datos.madrid.es/egob/catalogo/300110-18-accidentes-bicicleta.csv"),
-                            sep = ";",
-                            header = T,
-                            encoding = 'UTF-8',
-                            colClasses = "character")
-
-
-# Adecuar la tabla y limpiar los datos
-accidentes_bici$X..La.correspondencia.de.los.c.f3.digos.se.encuentra.descrito.en.la.estructura.del.fichero. <- NULL
-colnames(accidentes_bici) <- c("N_EXPEDIENTE","FECHA","HORA","CALLE","NUMERO","DISTRITO",
-                               "TIPO_ACCIDENTE", "ESTADO_METEREOLOGICO", "TIPO_VEHICULO", 
-                               "TIPO_PERSONA", "RANGO_DE_EDAD", "SEXO", "LESIVIDAD")
-
-
-# Arreglo de encodings. Debido a los diferentes simbolos que tiene el el archivo y los nombres originales de las columnas, fue 
-# necesario realizar el siguiente procedimiento.
-accidentes_bici$CALLE <- as.character(accidentes_bici$CALLE) 
-accidentes_bici$TIPO_ACCIDENTE <- as.character(accidentes_bici$TIPO_ACCIDENTE) 
-accidentes_bici$ESTADO_METEREOLOGICO <-as.character(accidentes_bici$ESTADO_METEREOLOGICO)
-accidentes_bici$TIPO_PERSONA <- as.character(accidentes_bici$TIPO_PERSONA)
-accidentes_bici$RANGO_DE_EDAD <- as.character(accidentes_bici$RANGO_DE_EDAD)
-accidentes_bici$DISTRITO <- as.character(accidentes_bici$DISTRITO) 
-
-Encoding(accidentes_bici$CALLE) <- 'unicode'
-Encoding(accidentes_bici$TIPO_ACCIDENTE) <- 'unicode'
-Encoding(accidentes_bici$ESTADO_METEREOLOGICO) <- 'unicode'
-Encoding(accidentes_bici$TIPO_PERSONA) <- 'unicode'
-Encoding(accidentes_bici$RANGO_DE_EDAD) <- 'unicode'
-Encoding(accidentes_bici$DISTRITO) <- 'unicode'
-
-# Finalmente se guarda la tabla en la carpeta como csv en utt-8 dependencias para su uso posterior 
-write.csv(accidentes_bici, file = 'resources/AccidentesBicicletas_2019.csv', fileEncoding = 'UTF-8')
 
 # Leer la tabla limpia y con el formato utf-8 correcto para el análisis
 accidentes_bici <- read.csv("resources/AccidentesBicicletas_2019.csv",
@@ -83,11 +48,34 @@ g <- ggplot(accidentes_bici, aes(LESIVIDAD, fill= LESIVIDAD)) +
        x = "Gravedad del accidente", 
        y = 'Número de accidentes', 
        caption = total_accidentes) + 
-  scale_y_continuous(breaks = c(50,100,150,200,250,300)) + 
+  scale_y_continuous(breaks = c(20,40,60,80,100,120,140,160,180,200,220,240,260,280)) + 
   scale_fill_brewer(palette = 'RdGy') +
-  theme_minimal()
+  theme_minimal() + 
+  theme(legend.position = 'none')
 g 
 
+# lo siguiente es el codigo adicional para probar los ograficos de plotly en R si este rsulta ser mejor 
+# Pues obtaré por dejar este commo definitivo, pop rahora va ganando el de de barras
+
+# library(plotly)
+# 
+# temporal_table_one <- accidentes_bici %>% 
+#   group_by(MES, MES_NAMES) %>% 
+#   summarise(Total = n())
+# 
+# p <- plot_ly(temporal_table_one, x = ~MES, y = ~Total, 
+#              type = 'bar', 
+#              color = ~MES,
+#              colors = 'RdGy',
+#              name = 'Lesividad')
+#   # add_trace(y = ~MES, name = 'LA Zoo') %>%
+#   # layout(yaxis = list(title = 'Count'), barmode = 'stack')
+# 
+# p
+# # Create a shareable link to your chart
+# # Set up API credentials: https://plot.ly/r/getting-started
+# chart_link = api_create(p, filename="bar-stacked")
+# chart_link
 
 # -----------------------------------Grafica de accidentes por mes
 accidentes_bici$MES_NAMES <- 0
@@ -133,7 +121,6 @@ add_months_names <- function(x){
 
 # ---------------------------------------------------------------------------
 accidentes_bici$MES_NAMES <- sapply(accidentes_bici$MES, add_months_names)
-as.factor(accidentes_bici$MES_NAMES)
 
 temporal_table <- accidentes_bici %>% 
   group_by(MES, MES_NAMES) %>% 
@@ -171,25 +158,56 @@ w <- ggplot(accidentes_bici, aes(LESIVIDAD, fill= LESIVIDAD)) +
   scale_fill_brewer(palette = 'RdGy') +
   theme_bw() +
   theme(legend.position = 'none', 
-        strip.background = element_rect(fill="black"), 
+        strip.background = element_rect(fill="black"),
         strip.text.x = element_text(size = 10, color = "white")) + 
   facet_wrap(~MES,nrow = 2 , labeller = labeller(MES = t))
 
 w 
 # --------------------------------------------------------------------------------
 
-z <- accidentes_bici %>% 
-  group_by(MES,MES_NAMES,LESIVIDAD) %>% 
+# accidentes por distrito
+library(rgdal)
+distrito_accidentes <- accidentes_bici %>% 
+  group_by(DISTRITO) %>% 
   summarise(Total = n())
 
-# labs(title = "Fuel economy declines as weight increases",
-#      subtitle = "(1973-74)",
-#      caption = "Data from the 1974 Motor Trend US magazine.",
-#      tag = "Figure 1",
-#      x = "Weight (1000 lbs)",
-#      y = "Fuel economy (mpg)",
-#      colour = "Gears")
+Color_custume <- distrito_accidentes$DISTRITO
+geo_madrid <- rgdal::readOGR("resources/Geo/madrid-districts.geojson")
 
+pal <- colorNumeric("viridis", NULL)
+
+leaflet(geo_madrid) %>%
+  addTiles() %>%
+  addPolygons(stroke = FALSE, smoothFactor = 0.3, fillOpacity = 1,
+              fillColor = pal,
+              label = ~distrito_accidentes$Total) 
+  # addLegend(pal = pal, values = ~log10(pop), opacity = 1.0,
+  #           labFormat = labelFormat(transform = function(x) round(10^x)))
+
+
+# ------------------------------- variación de la gravedad de los accidentes en el año
+
+z <- accidentes_bici %>% 
+  group_by(LESIVIDAD,MES, MES_NAMES) %>% 
+  summarise(Total = n())
+
+p <- ggplot(z, aes(x=MES, y=Total, color = LESIVIDAD)) + 
+  geom_line(aes(color = LESIVIDAD), size=1) +
+  geom_point(aes(color = LESIVIDAD), size= 2) +
+  scale_color_brewer(palette='Paired') +
+  labs(title = "Pendiente seleccionar título",
+       subtitle = "(1973-74)",
+       caption = "Hecho con ggplot2 package",
+       tag = "Figure 2",
+       x = "Año 2019 - Meses",
+       y = 'Número de accidentes') +
+  scale_y_continuous(breaks =  c(0,5, 10,15,20,25,30,35,40), limits = c(0,40)) +
+  scale_x_discrete(limit = z$MES, labels = z$MES_NAMES) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p 
+
+ 
 
 
 
