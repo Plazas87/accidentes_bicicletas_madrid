@@ -167,22 +167,35 @@ w
 
 # accidentes por distrito
 library(rgdal)
+library(Hmisc)
 distrito_accidentes <- accidentes_bici %>% 
   group_by(DISTRITO) %>% 
   summarise(Total = n())
 
-Color_custume <- distrito_accidentes$DISTRITO
+
+distrito_accidentes$DISTRITO <- capitalize(tolower(distrito_accidentes$DISTRITO))
 geo_madrid <- rgdal::readOGR("resources/Geo/madrid-districts.geojson")
 
-pal <- colorNumeric("viridis", NULL)
+distrito_accidentes$DISTRITO <- levels(geo_madrid$name)
+distrito_accidentes$DISTRITO
 
+tmp <- as.data.frame (geo_madrid$name)
+tmp$id <- geo_madrid$cartodb_id
+tmp <- tmp[order(tmp$`geo_madrid$name`),]
+distrito_accidentes$id <- tmp$id
+distrito_accidentes <- distrito_accidentes[order(distrito_accidentes$id),]
+
+
+pal <- colorNumeric(
+  palette = "Paired",
+
+  domain = distrito_accidentes$Total)
 leaflet(geo_madrid) %>%
   addTiles() %>%
-  addPolygons(stroke = FALSE, smoothFactor = 0.3, fillOpacity = 1,
-              fillColor = pal,
-              label = ~distrito_accidentes$Total) 
-  # addLegend(pal = pal, values = ~log10(pop), opacity = 1.0,
-  #           labFormat = labelFormat(transform = function(x) round(10^x)))
+  addPolygons(stroke = FALSE, smoothFactor = 0.3, fillOpacity = 0.8,
+              fillColor = ~pal(distrito_accidentes$Total),
+              label = ~distrito_accidentes$Total) %>% 
+  addLegend(pal = pal, values = ~distrito_accidentes$Total, opacity = 1.0)
 
 
 # ------------------------------- variación de la gravedad de los accidentes en el año
